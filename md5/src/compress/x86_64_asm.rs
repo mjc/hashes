@@ -9,14 +9,12 @@ macro_rules! c {
 macro_rules! round0 {
     ($a:literal, $b:literal, $c:literal, $d:literal, $k:literal, $s:literal, $i:literal) => {
         c!(
-            "mov    r14d, dword ptr [r8 + " $i " * 4];"
+            "add    " $a ", dword ptr [r8 + " $i " * 4];"  // Direct add from memory
             "mov    r13d, " $c ";"
-            "add    " $a ", r14d;"
             "xor    r13d, " $d ";"
-            "mov    r14d, dword ptr [rsi + " $k " * 4];"
             "and    r13d, " $b ";"
-            "add    " $a ", r14d;"
-            "xor    r13d, " $d ";"
+            "xor    r13d, " $d ";"                         // F = d ^ (b & (c ^ d))
+            "add    " $a ", dword ptr [rsi + " $k " * 4];" // Direct add from memory
             "add    " $a ", r13d;"
             "rol    " $a ", " $s ";"
             "add    " $a ", " $b ";"
@@ -28,14 +26,14 @@ macro_rules! round1 {
     ($a:literal, $b:literal, $c:literal, $d:literal, $k:literal, $s:literal, $i:literal) => {
         c!(
             "mov    r13d, " $d ";"
+            "mov    r14d, " $d ";"           // Load d into both registers
             "add    " $a ", dword ptr [r8 + " $i " * 4];"
             "not    r13d;"
+            "and    r14d, " $b ";"           // d & b (parallel calculation)
             "add    " $a ", dword ptr [rsi + " $k " * 4];"
-            "and    r13d, " $c ";"
+            "and    r13d, " $c ";"           // (~d) & c
             "add    " $a ", r13d;"
-            "mov    r13d, " $d ";"
-            "and    r13d, " $b ";"
-            "add    " $a ", r13d;"
+            "add    " $a ", r14d;"           // Add both parts of G
             "rol    " $a ", " $s ";"
             "add    " $a ", " $b ";"
         )
@@ -45,13 +43,11 @@ macro_rules! round1 {
 macro_rules! round2 {
     ($a:literal, $b:literal, $c:literal, $d:literal, $k:literal, $s:literal, $i:literal) => {
         c!(
-            "mov    r14d, dword ptr [r8 + " $i " * 4];"
+            "add    " $a ", dword ptr [r8 + " $i " * 4];"  // Direct add from memory
             "mov    r13d, " $c ";"
-            "add    " $a ", r14d;"
             "xor    r13d, " $d ";"
-            "mov    r14d, dword ptr [rsi + " $k " * 4];"
-            "add    " $a ", r14d;"
-            "xor    r13d, " $b ";"
+            "xor    r13d, " $b ";"                         // H = b ^ c ^ d
+            "add    " $a ", dword ptr [rsi + " $k " * 4];" // Direct add from memory
             "add    " $a ", r13d;"
             "rol    " $a ", " $s ";"
             "add    " $a ", " $b ";"
@@ -62,14 +58,12 @@ macro_rules! round2 {
 macro_rules! round3 {
     ($a:literal, $b:literal, $c:literal, $d:literal, $k:literal, $s:literal, $i:literal) => {
         c!(
-            "mov    r14d, dword ptr [r8 + " $i " * 4];"
+            "add    " $a ", dword ptr [r8 + " $i " * 4];"  // Direct add from memory
             "mov    r13d, " $d ";"
-            "add    " $a ", r14d;"
             "not    r13d;"
-            "mov    r14d, dword ptr [rsi + " $k " * 4];"
             "or     r13d, " $b ";"
-            "add    " $a ", r14d;"
-            "xor    r13d, " $c ";"
+            "xor    r13d, " $c ";"                         // I = c ^ (~d | b)
+            "add    " $a ", dword ptr [rsi + " $k " * 4];" // Direct add from memory
             "add    " $a ", r13d;"
             "rol    " $a ", " $s ";"
             "add    " $a ", " $b ";"
@@ -87,7 +81,7 @@ pub(super) fn compress(state: &mut [u32; 4], blocks: &[[u8; 64]]) {
             "42:",
 
             "mov    eax, r9d",
-            "mov    r10d, r11d", 
+            "mov    r10d, r11d",
             "mov    ecx, r12d",
             "mov    edx, {state3:e}",
 
