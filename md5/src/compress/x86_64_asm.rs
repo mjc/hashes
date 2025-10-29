@@ -10,10 +10,14 @@ macro_rules! round0 {
     ($a:literal, $b:literal, $c:literal, $d:literal, $k:literal, $s:literal, $i:literal) => {
         c!(
             "mov    r13d, " $c ";"
+            "add    " $a ", dword ptr [r8 + " $i " * 4];"
             "xor    r13d, " $d ";"
             "and    r13d, " $b ";"
+            "add    " $a ", dword ptr [rsi + " $k " * 4];"
             "xor    r13d, " $d ";"
-            roundtail!($a, $b, $k, $s, $i)
+            "add    " $a ", r13d;"
+            "rol    " $a ", " $s ";"
+            "add    " $a ", " $b ";"
         )
     }
 }
@@ -22,12 +26,16 @@ macro_rules! round1 {
     ($a:literal, $b:literal, $c:literal, $d:literal, $k:literal, $s:literal, $i:literal) => {
         c!(
             "mov    r13d, " $d ";"
+            "add    " $a ", dword ptr [r8 + " $i " * 4];"
             "not    r13d;"
+            "add    " $a ", dword ptr [rsi + " $k " * 4];"
             "and    r13d, " $c ";"
-            "mov    r14d, " $d ";"
-            "and    r14d, " $b ";"
-            "or     r13d, r14d;"
-            roundtail!($a, $b, $k, $s, $i)
+            "add    " $a ", r13d;"
+            "mov    r13d, " $d ";"
+            "and    r13d, " $b ";"
+            "add    " $a ", r13d;"
+            "rol    " $a ", " $s ";"
+            "add    " $a ", " $b ";"
         )
     }
 }
@@ -36,9 +44,13 @@ macro_rules! round2 {
     ($a:literal, $b:literal, $c:literal, $d:literal, $k:literal, $s:literal, $i:literal) => {
         c!(
             "mov    r13d, " $c ";"
+            "add    " $a ", dword ptr [r8 + " $i " * 4];"
             "xor    r13d, " $d ";"
+            "add    " $a ", dword ptr [rsi + " $k " * 4];"
             "xor    r13d, " $b ";"
-            roundtail!($a, $b, $k, $s, $i)
+            "add    " $a ", r13d;"
+            "rol    " $a ", " $s ";"
+            "add    " $a ", " $b ";"
         )
     }
 }
@@ -47,24 +59,14 @@ macro_rules! round3 {
     ($a:literal, $b:literal, $c:literal, $d:literal, $k:literal, $s:literal, $i:literal) => {
         c!(
             "mov    r13d, " $d ";"
+            "add    " $a ", dword ptr [r8 + " $i " * 4];"
             "not    r13d;"
+            "add    " $a ", dword ptr [rsi + " $k " * 4];"
             "or     r13d, " $b ";"
             "xor    r13d, " $c ";"
-            roundtail!($a, $b, $k, $s, $i)
-        )
-    }
-}
-
-macro_rules! roundtail {
-    ($a:literal, $b:literal, $k:literal, $s:literal, $i:literal) => {
-        c!(
-            "mov       r14d, dword ptr [r8 + " $i " * 4];"
-            "mov       r15d, dword ptr [rsi + " $k " * 4];"
-            "add       " $a ", r14d;"
-            "add       " $a ", r15d;"
-            "add       " $a ", r13d;"
-            "rol       " $a ", " $s ";"
-            "add       " $a ", " $b ";"
+            "add    " $a ", r13d;"
+            "rol    " $a ", " $s ";"
+            "add    " $a ", " $b ";"
         )
     }
 }
