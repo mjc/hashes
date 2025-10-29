@@ -82,7 +82,7 @@ pub(super) fn compress(state: &mut [u32; 4], blocks: &[[u8; 64]]) {
 
             "mov    eax, r9d",
             "mov    r10d, r11d",
-            "mov    ecx, r12d",
+            "mov    ecx, r12d", 
             "mov    edx, {state3:e}",
 
             /* 64 rounds of hashing */
@@ -177,7 +177,6 @@ pub(super) fn compress(state: &mut [u32; 4], blocks: &[[u8; 64]]) {
             out("r10d") _,
             out("r13d") _,
             out("r14d") _,
-            out("r15d") _,
 
             options(preserves_flags, readonly, pure, nostack),
         );
