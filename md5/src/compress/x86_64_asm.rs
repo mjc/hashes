@@ -9,15 +9,15 @@ macro_rules! c {
 macro_rules! round0 {
     ($a:literal, $b:literal, $c:literal, $d:literal, $k:literal, $s:literal, $i:literal) => {
         c!(
-            "add    " $a ", dword ptr [r8 + " $i " * 4];"  // Direct add from memory
-            "mov    r13d, " $c ";"
-            "xor    r13d, " $d ";"
-            "and    r13d, " $b ";"
+            "mov    r13d, " $c ";"                         // Start F computation early
+            "add    " $a ", dword ptr [r8 + " $i " * 4];" // Parallel: add constants
+            "xor    r13d, " $d ";"                         // c ^ d
+            "add    " $a ", dword ptr [rsi + " $k " * 4];" // Parallel: add input
+            "and    r13d, " $b ";"                         // b & (c ^ d)
             "xor    r13d, " $d ";"                         // F = d ^ (b & (c ^ d))
-            "add    " $a ", dword ptr [rsi + " $k " * 4];" // Direct add from memory
-            "add    " $a ", r13d;"
-            "rol    " $a ", " $s ";"
-            "add    " $a ", " $b ";"
+            "add    " $a ", r13d;"                         // Add F to a
+            "rol    " $a ", " $s ";"                       // Rotate
+            "add    " $a ", " $b ";"                       // Final add with b
         )
     }
 }
@@ -43,14 +43,14 @@ macro_rules! round1 {
 macro_rules! round2 {
     ($a:literal, $b:literal, $c:literal, $d:literal, $k:literal, $s:literal, $i:literal) => {
         c!(
-            "add    " $a ", dword ptr [r8 + " $i " * 4];"  // Direct add from memory
-            "mov    r13d, " $c ";"
-            "xor    r13d, " $d ";"
+            "mov    r13d, " $c ";"                         // Start H computation early
+            "add    " $a ", dword ptr [r8 + " $i " * 4];" // Parallel: add constants
+            "xor    r13d, " $d ";"                         // c ^ d
+            "add    " $a ", dword ptr [rsi + " $k " * 4];" // Parallel: add input
             "xor    r13d, " $b ";"                         // H = b ^ c ^ d
-            "add    " $a ", dword ptr [rsi + " $k " * 4];" // Direct add from memory
-            "add    " $a ", r13d;"
-            "rol    " $a ", " $s ";"
-            "add    " $a ", " $b ";"
+            "add    " $a ", r13d;"                         // Add H to a
+            "rol    " $a ", " $s ";"                       // Rotate
+            "add    " $a ", " $b ";"                       // Final add with b
         )
     }
 }
@@ -58,15 +58,15 @@ macro_rules! round2 {
 macro_rules! round3 {
     ($a:literal, $b:literal, $c:literal, $d:literal, $k:literal, $s:literal, $i:literal) => {
         c!(
-            "add    " $a ", dword ptr [r8 + " $i " * 4];"  // Direct add from memory
-            "mov    r13d, " $d ";"
-            "not    r13d;"
-            "or     r13d, " $b ";"
+            "mov    r13d, " $d ";"                         // Start I computation early
+            "add    " $a ", dword ptr [r8 + " $i " * 4];" // Parallel: add constants
+            "not    r13d;"                                 // ~d
+            "add    " $a ", dword ptr [rsi + " $k " * 4];" // Parallel: add input
+            "or     r13d, " $b ";"                         // ~d | b
             "xor    r13d, " $c ";"                         // I = c ^ (~d | b)
-            "add    " $a ", dword ptr [rsi + " $k " * 4];" // Direct add from memory
-            "add    " $a ", r13d;"
-            "rol    " $a ", " $s ";"
-            "add    " $a ", " $b ";"
+            "add    " $a ", r13d;"                         // Add I to a
+            "rol    " $a ", " $s ";"                       // Rotate
+            "add    " $a ", " $b ";"                       // Final add with b
         )
     }
 }
@@ -82,7 +82,7 @@ pub(super) fn compress(state: &mut [u32; 4], blocks: &[[u8; 64]]) {
 
             "mov    eax, r9d",
             "mov    r10d, r11d",
-            "mov    ecx, r12d", 
+            "mov    ecx, r12d",
             "mov    edx, {state3:e}",
 
             /* 64 rounds of hashing */
@@ -177,6 +177,7 @@ pub(super) fn compress(state: &mut [u32; 4], blocks: &[[u8; 64]]) {
             out("r10d") _,
             out("r13d") _,
             out("r14d") _,
+            out("r15d") _,
 
             options(preserves_flags, readonly, pure, nostack),
         );
