@@ -156,13 +156,11 @@ pub(super) fn compress(state: &mut [u32; 4], blocks: &[[u8; 64]]) {
 
             "add   r9d, eax",
             "add   r11d, r10d",
+            "add   rsi, 64",             // Move pointer increment between state adds
             "add   r12d, ecx",
             "add   {state3:e}, edx",
-
-            // Looping over blocks
-            "add  rsi, 64",
-            "dec  rdi",
-            "jnz  42b",
+            "dec   rdi",                 // Decrement counter after all state updates
+            "jnz   42b",
 
             state3 = inout(reg) state[3],
             inout("rsi") blocks.as_ptr() => _,
