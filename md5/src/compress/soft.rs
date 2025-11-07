@@ -30,6 +30,22 @@ fn op_h(w: u32, x: u32, y: u32, z: u32, m: u32, c: u32, s: u32) -> u32 {
         .wrapping_add(x)
 }
 
+// Optimized H function that reuses XOR computation from previous round
+#[inline(always)]
+fn op_h_reuse(w: u32, x: u32, y: u32, _z: u32, m: u32, c: u32, s: u32, h_tmp: &mut u32) -> u32 {
+    // h_tmp contains one part, we XOR with the other two to get x ^ y ^ z
+    *h_tmp ^= y;
+    *h_tmp ^= x; // Now h_tmp = x ^ y ^ z
+    let result = h_tmp
+        .wrapping_add(w)
+        .wrapping_add(m)
+        .wrapping_add(c)
+        .rotate_left(s)
+        .wrapping_add(x);
+    *h_tmp = y; // Store y for next round (next round will XOR with z and x)
+    result
+}
+
 #[inline(always)]
 fn op_i(w: u32, x: u32, y: u32, z: u32, m: u32, c: u32, s: u32) -> u32 {
     (y ^ (x | !z))
@@ -94,26 +110,28 @@ fn compress_block(state: &mut [u32; 4], input: &[u8; 64]) {
     c = op_g(c, d, a, b, data[7], RC[30], 14);
     b = op_g(b, c, d, a, data[12], RC[31], 20);
 
-    // round 3
-    a = op_h(a, b, c, d, data[5], RC[32], 4);
-    d = op_h(d, a, b, c, data[8], RC[33], 11);
-    c = op_h(c, d, a, b, data[11], RC[34], 16);
-    b = op_h(b, c, d, a, data[14], RC[35], 23);
+    // round 3 (H function with XOR reuse optimization)
+    let mut h_tmp = d; // Start with z for the first round (d), will XOR with c and b
 
-    a = op_h(a, b, c, d, data[1], RC[36], 4);
-    d = op_h(d, a, b, c, data[4], RC[37], 11);
-    c = op_h(c, d, a, b, data[7], RC[38], 16);
-    b = op_h(b, c, d, a, data[10], RC[39], 23);
+    a = op_h_reuse(a, b, c, d, data[5], RC[32], 4, &mut h_tmp);
+    d = op_h_reuse(d, a, b, c, data[8], RC[33], 11, &mut h_tmp);
+    c = op_h_reuse(c, d, a, b, data[11], RC[34], 16, &mut h_tmp);
+    b = op_h_reuse(b, c, d, a, data[14], RC[35], 23, &mut h_tmp);
 
-    a = op_h(a, b, c, d, data[13], RC[40], 4);
-    d = op_h(d, a, b, c, data[0], RC[41], 11);
-    c = op_h(c, d, a, b, data[3], RC[42], 16);
-    b = op_h(b, c, d, a, data[6], RC[43], 23);
+    a = op_h_reuse(a, b, c, d, data[1], RC[36], 4, &mut h_tmp);
+    d = op_h_reuse(d, a, b, c, data[4], RC[37], 11, &mut h_tmp);
+    c = op_h_reuse(c, d, a, b, data[7], RC[38], 16, &mut h_tmp);
+    b = op_h_reuse(b, c, d, a, data[10], RC[39], 23, &mut h_tmp);
 
-    a = op_h(a, b, c, d, data[9], RC[44], 4);
-    d = op_h(d, a, b, c, data[12], RC[45], 11);
-    c = op_h(c, d, a, b, data[15], RC[46], 16);
-    b = op_h(b, c, d, a, data[2], RC[47], 23);
+    a = op_h_reuse(a, b, c, d, data[13], RC[40], 4, &mut h_tmp);
+    d = op_h_reuse(d, a, b, c, data[0], RC[41], 11, &mut h_tmp);
+    c = op_h_reuse(c, d, a, b, data[3], RC[42], 16, &mut h_tmp);
+    b = op_h_reuse(b, c, d, a, data[6], RC[43], 23, &mut h_tmp);
+
+    a = op_h_reuse(a, b, c, d, data[9], RC[44], 4, &mut h_tmp);
+    d = op_h_reuse(d, a, b, c, data[12], RC[45], 11, &mut h_tmp);
+    c = op_h_reuse(c, d, a, b, data[15], RC[46], 16, &mut h_tmp);
+    b = op_h_reuse(b, c, d, a, data[2], RC[47], 23, &mut h_tmp);
 
     // round 4
     a = op_i(a, b, c, d, data[0], RC[48], 6);
